@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>EcoFlora · Guía de Supervivencia de tu Biomaceta</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: radial-gradient(circle at top, #e7f3ea 0%, #d4e8d9 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 16px;
+      color: #163020;
+    }
+    .font-display { font-family: 'Fraunces', Georgia, serif; }
+    .phone-shell {
+      width: 100%;
+      max-width: 400px;
+      height: 740px;
+      max-height: calc(100vh - 32px);
+      background: #faf9f5;
+      border-radius: 36px;
+      box-shadow: 0 25px 60px -15px rgba(22, 48, 32, 0.32), 0 0 0 10px #163020;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .scene-fade { animation: fadeUp 0.35s ease forwards; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes dropWater {
+      0% { transform: translateY(-12px) scale(0.7); opacity: 0; }
+      50% { opacity: 1; }
+      100% { transform: translateY(22px) scale(1); opacity: 0; }
+    }
+    .water-drop { animation: dropWater 0.9s ease-in infinite; }
+    input[type="range"] { accent-color: #1e4620; }
+  </style>
+</head>
+<body>
+
+  <main class="phone-shell">
+    <div class="pt-3 px-4 pb-2 bg-[#163020] text-white">
+      <div class="grid grid-cols-5 gap-1.5 mb-2.5" id="progress-bars">
+        <div class="h-1 bg-white/25 rounded-full overflow-hidden"><div id="bar-0" class="h-full bg-[#95d5b2] w-0 transition-all duration-100"></div></div>
+        <div class="h-1 bg-white/25 rounded-full overflow-hidden"><div id="bar-1" class="h-full bg-[#95d5b2] w-0 transition-all duration-100"></div></div>
+        <div class="h-1 bg-white/25 rounded-full overflow-hidden"><div id="bar-2" class="h-full bg-[#95d5b2] w-0 transition-all duration-100"></div></div>
+        <div class="h-1 bg-white/25 rounded-full overflow-hidden"><div id="bar-3" class="h-full bg-[#95d5b2] w-0 transition-all duration-100"></div></div>
+        <div class="h-1 bg-white/25 rounded-full overflow-hidden"><div id="bar-4" class="h-full bg-[#95d5b2] w-0 transition-all duration-100"></div></div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-[#2d6a4f] flex items-center justify-center text-sm font-bold border border-[#95d5b2]/50">🌱</div>
+          <div>
+            <p class="text-xs font-bold leading-tight">EcoFlora · Guía de Cuidado</p>
+            <p class="text-[10px] text-[#b7e4c7]" id="timer-label">0:00 / 0:30 · Escaneado vía QR</p>
+          </div>
+        </div>
+        <button id="play-pause-btn" onclick="togglePlay()" class="text-xs bg-white/15 hover:bg-white/25 px-3 py-1 rounded-full font-semibold transition">
+          ⏸ Pausar
+        </button>
+      </div>
+    </div>
+
+    <div id="scene-container" class="flex-1 overflow-y-auto p-5 flex flex-col justify-between"></div>
+
+    <div class="px-4 py-3 bg-white border-t border-[#e2ece5] flex items-center justify-between gap-2">
+      <button onclick="prevScene()" class="px-3.5 py-2 rounded-xl text-xs font-bold text-[#1e4620] bg-[#eaf4ec] hover:bg-[#d8ebdc] transition">
+        ← Anterior
+      </button>
+      <div class="flex gap-1.5" id="dots-nav"></div>
+      <button onclick="nextScene()" class="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-[#1e4620] hover:bg-[#2d6a4f] transition">
+        Siguiente →
+      </button>
+    </div>
+  </main>
+
+  <script>
+    const SCENES = [
+      { title: "1. Tu Biomaceta", duration: 6 },
+      { title: "2. Cómo Regar", duration: 8 },
+      { title: "3. Luz Ideal", duration: 7 },
+      { title: "4. Trasplante", duration: 6 },
+      { title: "5. Pasaporte", duration: 3 }
+    ];
+
+    let currentScene = 0;
+    let elapsedInScene = 0;
+    let isPlaying = true;
+
+    let selectedIngredient = 0;
+    let waterLevel = 45;
+    let isWatering = false;
+    let lightMode = "ventana";
+    let buryPercent = 30;
+    let showPassport = false;
+
+    const INGREDIENTS = [
+      { name: "Pétalos y tallos", icon: "🌸", desc: "Rescatados de florerías locales; aportan nutrientes orgánicos naturales a la raíz." },
+      { name: "Fibra de coco", icon: "🥥", desc: "Mantiene la aireación y retiene la humedad justa sin compactar la tierra." },
+      { name: "Cartón reciclado", icon: "📦", desc: "Brinda firmeza temporal mientras la planta crece en casa (3 a 4 semanas)." },
+      { name: "Fécula de maíz", icon: "🌽", desc: "Aglutinante 100 % biodegradable y libre de plásticos o químicos." }
+    ];
+
+    const LIGHT_OPTIONS = {
+      ventana: {
+        label: "Cerca de ventana",
+        badge: "⭐ Ideal",
+        bg: "from-[#fef9c3] to-[#eaf4ec]",
+        icon: "🌤️",
+        tip: "Luz indirecta brillante por 4 a 6 horas. Perfecta para que crezca fuerte sin secar la maceta."
+      },
+      escritorio: {
+        label: "Interior / Escritorio",
+        badge: "✓ Muy bien",
+        bg: "from-[#e0f2fe] to-[#eaf4ec]",
+        icon: "🪴",
+        tip: "Coloca siempre un platito base debajo para proteger tus muebles de la humedad natural."
+      },
+      balcon: {
+        label: "Balcón / Sol directo",
+        badge: "⚠️ Cuidado",
+        bg: "from-[#ffedd5] to-[#fef3c7]",
+        icon: "☀️",
+        tip: "Evita el sol fuerte de mediodía; puede resecar rápido las paredes biodegradables."
+      }
+    };
+
+    function renderDots() {
+      const dots = document.getElementById("dots-nav");
+      dots.innerHTML = SCENES.map((_, idx) => `
+        <button onclick="goToScene(${idx})" class="w-2.5 h-2.5 rounded-full transition ${idx === currentScene ? 'bg-[#1e4620] scale-110' : 'bg-[#cbd8ce]'}"></button>
+      `).join("");
+    }
+
+    function renderScene() {
+      renderDots();
+      const container = document.getElementById("scene-container");
+
+      if (currentScene === 0) {
+        const ing = INGREDIENTS[selectedIngredient];
+        container.innerHTML = `
+          <div class="scene-fade space-y-4">
+            <span class="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#d8f3dc] text-[#1b4332]">
+              Paso 1 · Conoce tu maceta
+            </span>
+            <h1 class="font-display text-2xl font-bold text-[#163020] leading-tight">
+              No es plástico: es alimento para tu planta
+            </h1>
+            <p class="text-xs text-[#3b5243] leading-relaxed">
+              Tu biomaceta EcoFlora está hecha con 4 ingredientes naturales. <strong>Toca cada uno</strong> para ver cómo ayuda a tu planta:
+            </p>
+
+            <div class="grid grid-cols-2 gap-2">
+              ${INGREDIENTS.map((item, i) => `
+                <button onclick="selectIngredient(${i})" class="p-3 rounded-2xl border text-left transition ${selectedIngredient === i ? 'bg-[#1e4620] text-white border-[#1e4620] shadow-md' : 'bg-white text-[#163020] border-[#d8e6dc] hover:bg-[#f0f7f2]'}">
+                  <div class="text-xl mb-1">${item.icon}</div>
+                  <div class="text-xs font-bold">${item.name}</div>
+                </button>
+              `).join("")}
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white border border-[#cfe3d4] shadow-sm">
+              <p class="text-xs font-bold text-[#1e4620] mb-1">${ing.icon} ${ing.name}</p>
+              <p class="text-xs text-[#3b5243] leading-relaxed">${ing.desc}</p>
+            </div>
+          </div>
+        `;
+      } else if (currentScene === 1) {
+        let statusText = "Humedad perfecta (35% - 70%)";
+        let statusColor = "bg-[#d8f3dc] text-[#1b4332]";
+        if (waterLevel < 35) {
+          statusText = "Tierra un poco seca · Dale un riego suave";
+          statusColor = "bg-[#fef3c7] text-[#92400e]";
+        } else if (waterLevel > 70) {
+          statusText = "¡Cuidado! Exceso de agua ablanda la maceta antes de tiempo";
+          statusColor = "bg-[#fee2e2] text-[#991b1b]";
+        }
+
+        container.innerHTML = `
+          <div class="scene-fade space-y-4">
+            <span class="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#d8f3dc] text-[#1b4332]">
+              Paso 2 · Riego inteligente
+            </span>
+            <h1 class="font-display text-2xl font-bold text-[#163020] leading-tight">
+              Riega al centro, sin empapar las paredes
+            </h1>
+            <p class="text-xs text-[#3b5243] leading-relaxed">
+              Usa un atomizador o chorrito suave directo en la raíz cada <strong>2 o 3 días</strong>. Prueba el simulador:
+            </p>
+
+            <div class="relative bg-white rounded-3xl p-4 border border-[#d8e6dc] text-center overflow-hidden">
+              <div class="h-24 flex flex-col items-center justify-center relative">
+                ${isWatering ? '<div class="water-drop text-xl absolute top-1">💧 💧</div>' : ''}
+                <div class="text-4xl">🌱</div>
+                <div class="w-24 h-10 bg-[#8d6e63] rounded-b-2xl mt-1 flex items-center justify-center text-[10px] text-white font-bold shadow-inner">
+                  Biomaceta
+                </div>
+              </div>
+
+              <div class="mt-2">
+                <div class="flex justify-between text-[11px] font-bold mb-1">
+                  <span>Nivel de humedad</span>
+                  <span>${waterLevel}%</span>
+                </div>
+                <div class="w-full h-3 bg-[#e9ecef] rounded-full overflow-hidden">
+                  <div class="h-full transition-all duration-300 ${waterLevel > 70 ? 'bg-red-500' : waterLevel < 35 ? 'bg-amber-400' : 'bg-[#2d6a4f]'}" style="width: ${waterLevel}%"></div>
+                </div>
+              </div>
+
+              <div class="mt-3 px-3 py-2 rounded-xl text-[11px] font-semibold ${statusColor}">
+                ${statusText}
+              </div>
+
+              <div class="flex gap-2 mt-3">
+                <button onclick="addWater()" class="flex-1 py-2.5 rounded-xl bg-[#1e4620] text-white text-xs font-bold hover:bg-[#2d6a4f] transition">
+                  💧 Regar suave (+15%)
+                </button>
+                <button onclick="resetWater()" class="px-3 py-2.5 rounded-xl bg-[#eaf4ec] text-[#1e4620] text-xs font-bold">
+                  Secar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (currentScene === 2) {
+        const opt = LIGHT_OPTIONS[lightMode];
+        container.innerHTML = `
+          <div class="scene-fade space-y-4">
+            <span class="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#d8f3dc] text-[#1b4332]">
+              Paso 3 · Luz y ubicación
+            </span>
+            <h1 class="font-display text-2xl font-bold text-[#163020] leading-tight">
+              ¿Dónde colocar tu biomaceta en casa?
+            </h1>
+            <p class="text-xs text-[#3b5243]">
+              Selecciona un espacio para ver la recomendación de cuidado:
+            </p>
+
+            <div class="grid grid-cols-3 gap-1.5">
+              ${Object.entries(LIGHT_OPTIONS).map(([key, val]) => `
+                <button onclick="setLight('${key}')" class="p-2.5 rounded-xl border text-center transition ${lightMode === key ? 'bg-[#1e4620] text-white border-[#1e4620]' : 'bg-white text-[#163020] border-[#d8e6dc]'}">
+                  <div class="text-lg">${val.icon}</div>
+                  <div class="text-[11px] font-bold leading-tight mt-1">${val.label}</div>
+                </button>
+              `).join("")}
+            </div>
+
+            <div class="p-4 rounded-3xl bg-gradient-to-br ${opt.bg} border border-[#cfe3d4] space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-2xl">${opt.icon}</span>
+                <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-white/80 text-[#163020]">${opt.badge}</span>
+              </div>
+              <h2 class="font-bold text-sm text-[#163020]">${opt.label}</h2>
+              <p class="text-xs text-[#2d4234] leading-relaxed">${opt.tip}</p>
+            </div>
+
+            <div class="p-3 rounded-2xl bg-white border border-[#d8e6dc] flex items-center gap-2.5">
+              <span class="text-lg">🍽️</span>
+              <p class="text-[11px] text-[#3b5243]"><strong>Tip práctico:</strong> Si la pones sobre madera o escritorio, usa un platito base debajo.</p>
+            </div>
+          </div>
+        `;
+      } else if (currentScene === 3) {
+        let stageMsg = "Semanas 1 a 3: La planta crece fuerte dentro de tu biomaceta.";
+        if (buryPercent >= 40 && buryPercent < 80) {
+          stageMsg = "Semana 3–4: Haz unos cortes suaves en la base y entiérrala completa sin sacarla.";
+        } else if (buryPercent >= 80) {
+          stageMsg = "¡Listo! En 30–45 días la maceta se convierte en abono orgánico directo en la raíz.";
+        }
+
+        container.innerHTML = `
+          <div class="scene-fade space-y-4">
+            <span class="inline-block text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#d8f3dc] text-[#1b4332]">
+              Paso 4 · Trasplante sin plástico
+            </span>
+            <h1 class="font-display text-2xl font-bold text-[#163020] leading-tight">
+              A las 3–4 semanas, entiérrala completa
+            </h1>
+            <p class="text-xs text-[#3b5243]">
+              Desliza para simular el momento del trasplante directo a tu jardín o maceta grande:
+            </p>
+
+            <div class="bg-white p-4 rounded-3xl border border-[#d8e6dc] space-y-3">
+              <div class="relative h-28 rounded-2xl bg-gradient-to-b from-[#e0f2fe] via-[#e0f2fe] to-[#6d4c41] overflow-hidden flex flex-col items-center justify-end pb-2">
+                <div class="transition-all duration-200 flex flex-col items-center" style="transform: translateY(${buryPercent * 0.32}px)">
+                  <span class="text-3xl">🌿</span>
+                  <div class="w-16 h-8 bg-[#a1887f] rounded-b-xl border border-[#5d4037]/30 flex items-center justify-center text-[9px] text-white font-bold">
+                    ${buryPercent >= 80 ? 'Abono 🌱' : 'EcoFlora'}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] font-bold mb-1">
+                  <span>Progreso de trasplante</span>
+                  <span>${buryPercent}%</span>
+                </div>
+                <input type="range" min="0" max="100" value="${buryPercent}" oninput="setBury(this.value)" class="w-full cursor-pointer" />
+              </div>
+
+              <p class="text-xs font-medium text-[#1b4332] bg-[#eaf4ec] p-3 rounded-xl leading-relaxed">
+                ${stageMsg}
+              </p>
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="scene-fade space-y-4 text-center my-auto">
+            <div class="w-16 h-16 mx-auto rounded-full bg-[#d8f3dc] flex items-center justify-center text-3xl shadow-sm">
+              🌻
+            </div>
+            <h1 class="font-display text-2xl font-bold text-[#163020] leading-tight">
+              De la flor a la tierra
+            </h1>
+            <p class="text-xs text-[#3b5243] leading-relaxed px-2">
+              Gracias por darle una segunda vida a las flores de Tuxtla Gutiérrez y cultivar sin plástico.
+            </p>
+
+            <button onclick="togglePassport()" class="w-full py-3 px-4 rounded-2xl bg-white border-2 border-[#1e4620] text-[#1e4620] text-xs font-bold hover:bg-[#eaf4ec] transition">
+              ${showPassport ? '▲ Ocultar Pasaporte de la Flor' : '🌸 Ver Pasaporte de la Flor'}
+            </button>
+
+            ${showPassport ? `
+              <div class="p-3.5 rounded-2xl bg-white border border-[#cfe3d4] text-left text-xs space-y-1.5 shadow-sm">
+                <p><strong>📍 Origen:</strong> Florerías aliadas de Tuxtla Gutiérrez, Chiapas.</p>
+                <p><strong>♻️ Impacto:</strong> 100 % biodegradable, cero residuos plásticos.</p>
+                <p><strong>⏱️ Degradación en tierra:</strong> 30 a 45 días como nutriente natural.</p>
+              </div>
+            ` : ''}
+
+            <button onclick="restartVideo()" class="w-full py-3 rounded-2xl bg-[#1e4620] text-white text-xs font-bold hover:bg-[#2d6a4f] transition shadow-md">
+              ↻ Volver a ver la guía
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    function selectIngredient(i) { selectedIngredient = i; renderScene(); }
+    function addWater() {
+      waterLevel = Math.min(100, waterLevel + 15);
+      isWatering = true;
+      renderScene();
+      setTimeout(() => { isWatering = false; renderScene(); }, 950);
+    }
+    function resetWater() { waterLevel = 25; renderScene(); }
+    function setLight(mode) { lightMode = mode; renderScene(); }
+    function setBury(val) { buryPercent = Number(val); renderScene(); }
+    function togglePassport() { showPassport = !showPassport; renderScene(); }
+
+    function goToScene(idx) {
+      currentScene = idx;
+      elapsedInScene = 0;
+      updateBars();
+      renderScene();
+    }
+    function nextScene() {
+      if (currentScene < SCENES.length - 1) goToScene(currentScene + 1);
+      else goToScene(0);
+    }
+    function prevScene() {
+      if (currentScene > 0) goToScene(currentScene - 1);
+    }
+    function restartVideo() {
+      isPlaying = true;
+      document.getElementById("play-pause-btn").textContent = "⏸ Pausar";
+      goToScene(0);
+    }
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      document.getElementById("play-pause-btn").textContent = isPlaying ? "⏸ Pausar" : "▶ Reanudar";
+    }
+
+    function updateBars() {
+      let totalElapsed = 0;
+      for (let i = 0; i < SCENES.length; i++) {
+        const bar = document.getElementById(`bar-${i}`);
+        if (i < currentScene) {
+          bar.style.width = "100%";
+          totalElapsed += SCENES[i].duration;
+        } else if (i === currentScene) {
+          const pct = Math.min(100, (elapsedInScene / SCENES[i].duration) * 100);
+          bar.style.width = pct + "%";
+          totalElapsed += elapsedInScene;
+        } else {
+          bar.style.width = "0%";
+        }
+      }
+      const sec = Math.min(30, Math.floor(totalElapsed));
+      document.getElementById("timer-label").textContent = `0:${sec.toString().padStart(2, '0')} / 0:30 · Escaneado vía QR`;
+    }
+
+    setInterval(() => {
+      if (!isPlaying) return;
+      elapsedInScene += 0.2;
+      if (elapsedInScene >= SCENES[currentScene].duration) {
+        if (currentScene < SCENES.length - 1) {
+          currentScene++;
+          elapsedInScene = 0;
+          renderScene();
+        } else {
+          isPlaying = false;
+          document.getElementById("play-pause-btn").textContent = "↻ Repetir";
+        }
+      }
+      updateBars();
+    }, 200);
+
+    renderScene();
+    updateBars();
+  </script>
+</body>
+</html>
+
